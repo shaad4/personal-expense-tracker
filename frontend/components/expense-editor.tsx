@@ -188,7 +188,7 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
                 <label className="expense-future-option">
                   <input type="checkbox" role="switch" checked={allowFutureDate}
                     onChange={event => toggleFutureDate(event.currentTarget.checked)} />
-                  Allow future date
+                  Choose a date after today
                 </label>
               </div>
             </div>

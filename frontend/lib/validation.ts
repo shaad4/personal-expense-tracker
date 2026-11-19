@@ -4,7 +4,7 @@ export type ExpenseDraft = Required<ExpenseInput>;
 export type FieldErrors = Partial<Record<keyof ExpenseDraft, string>>;
 
 export const expenseFields = ["title", "amount", "category", "date", "note"] as const;
-export const futureDateMessage = "Turn on “Allow future date” or choose today or earlier.";
+export const futureDateMessage = "To save this date, turn on “Choose a date after today”.";
 
 export function todayInKolkata(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
