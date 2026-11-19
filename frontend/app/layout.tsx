@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { themeStorageKey } from "../lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,5 +9,15 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <html lang="en"><body>{children}</body></html>;
+  // Apply the saved choice before the first paint. CSS follows the system by default.
+  const restoreTheme = `try {
+    const choice = localStorage.getItem(${JSON.stringify(themeStorageKey)});
+    if (choice === "dark" || choice === "light") document.documentElement.dataset.theme = choice;
+  } catch {}`;
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head><script>{restoreTheme}</script></head>
+      <body>{children}</body>
+    </html>
+  );
 }

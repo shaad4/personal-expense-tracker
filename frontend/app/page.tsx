@@ -5,6 +5,7 @@ import ExpenseEditor from "../components/expense-editor";
 import ExpenseHistory from "../components/expense-history";
 import { Icon } from "../components/icons";
 import MonthOverview from "../components/month-overview";
+import ThemeSwitch from "../components/theme-switch";
 import { api, type CategoryOption, type Expense, type MonthlySummary } from "../lib/api";
 import { formatDate, monthLabel } from "../lib/format";
 import { todayInKolkata } from "../lib/validation";
@@ -80,6 +81,7 @@ export default function Dashboard() {
           <span className="bar-divider" aria-hidden="true" />
           <span className="workspace-label">Personal ledger</span>
           <span className="today"><Icon name="calendar" size={16} />{today ? <time dateTime={today}>{formatDate(today)}</time> : "Today"}</span>
+          <ThemeSwitch />
         </div>
       </header>
       <main id="overview" className="frame dashboard">
