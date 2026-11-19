@@ -46,6 +46,13 @@ class DateOnlyField(serializers.DateField):
         return super().to_internal_value(data)
 
 
+class StrictBooleanField(serializers.BooleanField):
+    def to_internal_value(self, data):
+        if not isinstance(data, bool):
+            self.fail("invalid")
+        return data
+
+
 class AmountField(serializers.DecimalField):
     def to_internal_value(self, data):
         # Decimal accepts underscores even in strings like "1__0".
@@ -78,17 +85,30 @@ class ExpenseSerializer(serializers.ModelSerializer):
     )
     category = CategoryField()
     date = DateOnlyField(required=False)
+    allow_future_date = StrictBooleanField(write_only=True, default=False)
     note = PlainTextField(multiline=True, allow_blank=True, max_length=2000, default="")
 
     class Meta:
         model = Expense
-        fields = ("id", "title", "amount", "category", "date", "note", "created_at", "updated_at")
+        fields = (
+            "id",
+            "title",
+            "amount",
+            "category",
+            "date",
+            "allow_future_date",
+            "note",
+            "created_at",
+            "updated_at",
+        )
         read_only_fields = ("id", "created_at", "updated_at")
 
-    def validate_date(self, value):
-        if value > timezone.localdate():
-            raise serializers.ValidationError("Expense dates cannot be in the future.")
-        return value
+    def validate(self, attrs):
+        allow_future_date = attrs.pop("allow_future_date", False)
+        date = attrs.get("date")
+        if date is not None and date > timezone.localdate() and not allow_future_date:
+            raise serializers.ValidationError({"date": "Enable future dates to use this date."})
+        return attrs
 
     def get_fields(self):
         fields = super().get_fields()
