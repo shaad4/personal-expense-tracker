@@ -3,7 +3,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { api, ApiError, type CategoryOption, type Expense, type ExpenseFilters, type ExpensePage } from "../lib/api";
-import { formatMoney } from "../lib/format";
+import { formatDate, formatMoney } from "../lib/format";
+import { parseDisplayDate } from "../lib/validation";
+import DateInput from "./date-input";
 import { CategoryIcon, Icon } from "./icons";
 import "./expense-history.css";
 
@@ -18,13 +20,6 @@ type Filters = { category: string; start_date: string; end_date: string };
 type ListState = { key: string; data: ExpensePage } | { key: string; error: string };
 const emptyFilters: Filters = { category: "", start_date: "", end_date: "" };
 const pageSize = 10;
-const shortDate = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
-});
-
-function formatDate(value: string) {
-  return shortDate.format(new Date(value + "T00:00:00Z"));
-}
 
 export default function ExpenseHistory({ categories, revision, onEdit, onAdd }: Props) {
   const [search, setSearch] = useState("");
@@ -33,7 +28,7 @@ export default function ExpenseHistory({ categories, revision, onEdit, onAdd }: 
   const [attempt, setAttempt] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
   const [draft, setDraft] = useState<Filters>(emptyFilters);
-  const [filterError, setFilterError] = useState("");
+  const [filterError, setFilterError] = useState<{ field: "start_date" | "end_date"; message: string } | null>(null);
   const popoverId = useId();
   const filterContainer = useRef<HTMLDivElement>(null);
   const filterTrigger = useRef<HTMLButtonElement>(null);
@@ -87,20 +82,32 @@ export default function ExpenseHistory({ categories, revision, onEdit, onAdd }: 
     if (filterOpen) return closeFilter();
     setDraft({
       category: query.category || "",
-      start_date: query.start_date || "",
-      end_date: query.end_date || "",
+      start_date: formatDate(query.start_date || ""),
+      end_date: formatDate(query.end_date || ""),
     });
-    setFilterError("");
+    setFilterError(null);
     setFilterOpen(true);
   }
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (draft.start_date && draft.end_date && draft.start_date > draft.end_date) {
-      setFilterError("End date must be on or after start date.");
+    const start = parseDisplayDate(draft.start_date);
+    const end = parseDisplayDate(draft.end_date);
+    let error: typeof filterError = null;
+    if (draft.start_date.trim() && !start) {
+      error = { field: "start_date", message: "Enter a valid start date in DD/MM/YYYY format." };
+    } else if (draft.end_date.trim() && !end) {
+      error = { field: "end_date", message: "Enter a valid end date in DD/MM/YYYY format." };
+    } else if (start && end && start > end) {
+      error = { field: "end_date", message: "End date must be on or after start date." };
+    }
+    if (error) {
+      setFilterError(error);
+      const input = event.currentTarget.elements.namedItem(error.field);
+      if (input instanceof HTMLInputElement) input.focus();
       return;
     }
-    setQuery((current) => ({ ...current, ...draft, page: 1 }));
+    setQuery((current) => ({ ...current, category: draft.category, start_date: start ?? "", end_date: end ?? "", page: 1 }));
     closeFilter();
   }
 
@@ -170,18 +177,24 @@ export default function ExpenseHistory({ categories, revision, onEdit, onAdd }: 
                     </span>
                   </label>
                   <div className="history-dates">
-                    <label>Start date
-                      <input type="date" max="9999-12-31" value={draft.start_date} onChange={(event) => {
-                        setDraft({ ...draft, start_date: event.target.value }); setFilterError("");
-                      }} />
-                    </label>
-                    <label>End date
-                      <input type="date" max="9999-12-31" value={draft.end_date} onChange={(event) => {
-                        setDraft({ ...draft, end_date: event.target.value }); setFilterError("");
-                      }} />
-                    </label>
+                    {(["start_date", "end_date"] as const).map((field) => {
+                      const label = field === "start_date" ? "Start date" : "End date";
+                      const id = `${popoverId}-${field}`;
+                      const invalid = filterError?.field === field;
+                      return (
+                        <div className="history-date-field" key={field}>
+                          <label htmlFor={id}>{label}</label>
+                          <DateInput id={id} name={field} value={draft[field]} aria-invalid={invalid}
+                            aria-describedby={invalid ? `${popoverId}-error` : undefined}
+                            calendarLabel={`Choose ${label.toLowerCase()} from calendar`}
+                            onValueChange={(value) => {
+                              setDraft({ ...draft, [field]: value }); setFilterError(null);
+                            }} />
+                        </div>
+                      );
+                    })}
                   </div>
-                  {filterError && <p role="alert" className="history-form-error">{filterError}</p>}
+                  {filterError && <p id={`${popoverId}-error`} role="alert" className="history-form-error">{filterError.message}</p>}
                   <div className="history-popover-actions">
                     <button type="button" onClick={() => {
                       setQuery((existing) => ({ ...existing, ...emptyFilters, page: 1 })); closeFilter();

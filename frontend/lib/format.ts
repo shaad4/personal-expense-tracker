@@ -20,3 +20,9 @@ export function formatMoney(amount: string): string {
 export function monthLabel(month: string): string {
   return monthYear.format(new Date(`${month}-01T00:00:00Z`));
 }
+
+export function formatDate(iso: string): string {
+  if (!iso) return "";
+  const [year, month, day] = iso.split("-");
+  return `${day}/${month}/${year}`;
+}

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { api, ApiError, type CategoryOption, type Expense, type ExpenseInput } from "../lib/api";
+import { formatDate } from "../lib/format";
 import { expenseFields, todayInKolkata, validateExpense, type ExpenseDraft, type FieldErrors } from "../lib/validation";
+import DateInput from "./date-input";
 import { Icon } from "./icons";
 import "./expense-editor.css";
 
@@ -18,7 +20,7 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
     title: expense?.title ?? "",
     amount: expense?.amount ?? "",
     category: expense?.category ?? "",
-    date: expense?.date ?? todayInKolkata(),
+    date: formatDate(expense?.date ?? todayInKolkata()),
     note: expense?.note ?? "",
   }));
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -59,16 +61,19 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
     else onClose();
   }
 
+  function changeField(name: keyof ExpenseDraft, value: string) {
+    setDraft(previous => ({ ...previous, [name]: value }));
+    setErrors(previous => ({ ...previous, [name]: undefined }));
+    setErrorMessage("");
+  }
+
   function fieldProps(name: keyof ExpenseDraft) {
     return {
       name, id: "expense-" + name, value: draft[name],
       "aria-invalid": !!errors[name],
       "aria-describedby": errors[name] ? "expense-" + name + "-error" : undefined,
       onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const value = event.target.value;
-        setDraft(previous => ({ ...previous, [name]: value }));
-        setErrors(previous => ({ ...previous, [name]: undefined }));
-        setErrorMessage("");
+        changeField(name, event.target.value);
       },
     };
   }
@@ -162,7 +167,10 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
               </div>
               <div className="expense-form-field">
                 <label htmlFor="expense-date">Date</label>
-                <input {...fieldProps("date")} type="date" required />
+                <DateInput id="expense-date" name="date" value={draft.date} required
+                  calendarLabel="Choose expense date from calendar"
+                  aria-invalid={!!errors.date} aria-describedby={errors.date ? "expense-date-error" : undefined}
+                  onValueChange={(value) => changeField("date", value)} />
                 {fieldError("date")}
               </div>
             </div>

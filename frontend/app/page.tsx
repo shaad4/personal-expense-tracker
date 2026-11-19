@@ -6,11 +6,8 @@ import ExpenseHistory from "../components/expense-history";
 import { Icon } from "../components/icons";
 import MonthOverview from "../components/month-overview";
 import { api, type CategoryOption, type Expense, type MonthlySummary } from "../lib/api";
-import { monthLabel } from "../lib/format";
-
-const calendarDate = new Intl.DateTimeFormat("en-IN", {
-  weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata",
-});
+import { formatDate, monthLabel } from "../lib/format";
+import { todayInKolkata } from "../lib/validation";
 
 export default function Dashboard() {
   const [today, setToday] = useState("");
@@ -24,7 +21,7 @@ export default function Dashboard() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    const updateDate = () => setToday(calendarDate.format(new Date()));
+    const updateDate = () => setToday(todayInKolkata());
     updateDate();
     const timer = window.setInterval(updateDate, 60000);
     return () => window.clearInterval(timer);
@@ -82,7 +79,7 @@ export default function Dashboard() {
           <div className="brand"><img src="/icon.svg" width="34" height="34" alt="" />Folio</div>
           <span className="bar-divider" aria-hidden="true" />
           <span className="workspace-label">Personal ledger</span>
-          <span className="today"><Icon name="calendar" size={16} />{today || "Today"}</span>
+          <span className="today"><Icon name="calendar" size={16} />{today ? <time dateTime={today}>{formatDate(today)}</time> : "Today"}</span>
         </div>
       </header>
       <main id="overview" className="frame dashboard">
