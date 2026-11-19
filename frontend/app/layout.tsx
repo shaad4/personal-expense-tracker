@@ -4,7 +4,7 @@ import { themeStorageKey } from "../lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Folio — Personal expense tracker",
+  title: "Folio | personal expense tracker",
   description: "Your personal expense ledger and monthly spending overview.",
 };
 
