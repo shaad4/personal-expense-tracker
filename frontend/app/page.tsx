@@ -6,15 +6,18 @@ import ExpenseHistory from "../components/expense-history";
 import { Icon } from "../components/icons";
 import MonthOverview from "../components/month-overview";
 import ThemeSwitch from "../components/theme-switch";
-import { api, type CategoryOption, type Expense, type MonthlySummary } from "../lib/api";
+import { api, type CategoryOption, type Expense, type SpendingSummary, type SummaryPeriod } from "../lib/api";
 import { formatDate, monthLabel } from "../lib/format";
 import { todayInKolkata } from "../lib/validation";
 
 export default function Dashboard() {
   const [today, setToday] = useState("");
-  const [summary, setSummary] = useState<MonthlySummary | null>(null);
+  const [period, setPeriod] = useState<SummaryPeriod>("month");
+  const [result, setResult] = useState<{ period: SummaryPeriod; day: string; data: SpendingSummary | null } | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [summaryError, setSummaryError] = useState(false);
+  const active = result?.period === period && result.day === today ? result : null;
+  const summary = active?.data ?? null;
+  const summaryError = active?.data === null;
   const [categoryError, setCategoryError] = useState(false);
   const [revision, setRevision] = useState(0);
   const [retry, setRetry] = useState(0);
@@ -42,19 +45,18 @@ export default function Dashboard() {
   useEffect(() => {
     if (!today) return;
     const controller = new AbortController();
-    api.getSummary(controller.signal).then((data) => {
+    api.getSummary(period, controller.signal).then((data) => {
       if (!controller.signal.aborted) {
-        setSummary(data);
-        setSummaryError(false);
+        const matchesPeriod = period === "today" ? "date" in data : "month" in data;
+        setResult({ period, day: today, data: matchesPeriod ? data : null });
       }
     }).catch(() => {
       if (!controller.signal.aborted) {
-        setSummary(null);
-        setSummaryError(true);
+        setResult({ period, day: today, data: null });
       }
     });
     return () => controller.abort();
-  }, [today, revision, retry]);
+  }, [period, today, revision, retry]);
 
   useEffect(() => {
     if (!notice) return;
@@ -87,18 +89,23 @@ export default function Dashboard() {
       <main id="overview" className="frame dashboard">
         <div className="overview-heading">
           <div>
-            <h1 id="monthly-summary">Monthly summary</h1>
-            <p>{summary ? monthLabel(summary.month) : "This month"}</p>
+            <h1 id="monthly-summary">{period === "today" ? "Today’s summary" : "Monthly summary"}</h1>
+            <p>{period === "today" ? formatDate(summary && "date" in summary ? summary.date : today)
+              : summary && "month" in summary ? monthLabel(summary.month) : "This month"}</p>
           </div>
           <button className="add-expense" type="button" onClick={() => openEditor(null)}><Icon name="plus" size={17} />Add expense</button>
         </div>
+        <div className="summary-period" role="group" aria-label="Summary period">
+          <button type="button" aria-pressed={period === "month"} onClick={() => setPeriod("month")}>This month</button>
+          <button type="button" aria-pressed={period === "today"} onClick={() => setPeriod("today")}>Today</button>
+        </div>
         {(summaryError || categoryError) && (
           <div className="connection-error" role="alert">
-            <span>{summaryError ? "Couldn’t load your monthly overview." : "Couldn’t load expense categories."} Check that the backend is running.</span>
+            <span>{summaryError ? "Couldn’t load your spending summary." : "Couldn’t load expense categories."} Check that the backend is running.</span>
             <button type="button" onClick={() => setRetry((value) => value + 1)}>Retry</button>
           </div>
         )}
-        <MonthOverview summary={summary} failed={summaryError} />
+        <MonthOverview period={period} summary={summary} failed={summaryError} />
         <ExpenseHistory categories={categories} revision={revision + retry} onEdit={openEditor} onAdd={() => openEditor(null)} />
       </main>
       {editor && <ExpenseEditor expense={editor.expense} categories={categories} onClose={() => setEditor(null)} onSaved={(message) => {

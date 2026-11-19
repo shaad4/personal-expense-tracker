@@ -33,13 +33,14 @@ export interface ExpensePage {
   results: Expense[];
 }
 
-export interface MonthlySummary {
-  month: string;
+export type SummaryPeriod = "month" | "today";
+
+export type SpendingSummary = ({ month: string } | { date: string }) & {
   currency: "INR";
   total: string;
   expense_count: number;
   by_category: { category: string; total: string }[];
-}
+};
 
 export class ApiError extends Error {
   constructor(
@@ -99,7 +100,8 @@ export const api = {
     const query = search.toString();
     return request<ExpensePage>(`expenses/${query ? `?${query}` : ""}`, { signal });
   },
-  getSummary: (signal?: AbortSignal) => request<MonthlySummary>("expenses/summary/", { signal }),
+  getSummary: (period: SummaryPeriod, signal?: AbortSignal) =>
+    request<SpendingSummary>(period === "today" ? "expenses/summary/?period=today" : "expenses/summary/", { signal }),
   getCategories: (signal?: AbortSignal) => request<CategoryOption[]>("expenses/categories/", { signal }),
   createExpense: (input: CreateExpenseInput) =>
     request<Expense>("expenses/", { method: "POST", body: JSON.stringify(input) }),

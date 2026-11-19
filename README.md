@@ -1,6 +1,6 @@
 # Folio · Personal expense tracker
 
-Folio is a local, single-user INR expense tracker. Add an expense with the icon-based category picker, select a ledger row to edit or delete it, and combine title, category, and date filters. The overview shows spending for the current calendar month in Asia/Kolkata. The responsive interface follows the device's light or dark appearance until you choose a theme in the header. That choice is saved in browser storage.
+Folio is a local, single-user INR expense tracker. Add an expense with the icon-based category picker, select a ledger row to edit or delete it, and combine title, category, and date filters. The overview shows spending for today or the current calendar month in Asia/Kolkata. The responsive interface follows the device's light or dark appearance until you choose a theme in the header. That choice is saved in browser storage.
 
 ## Run locally
 
@@ -46,7 +46,7 @@ npm ci
 npm run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
-Open the [monthly summary in Folio](http://127.0.0.1:3000/#monthly-summary). **Total spent** and **Category breakdown** show this month's spending independently of ledger filters. The same totals are available from [GET /api/expenses/summary/](http://127.0.0.1:8000/api/expenses/summary/).
+Open the [spending summary in Folio](http://127.0.0.1:3000/#monthly-summary). **This month** is selected by default. Choose **Today** to see the current day’s total, expense count, and category breakdown. Ledger filters operate independently.
 
 The browser calls `http://127.0.0.1:8000/api` by default. To change the API URL, copy `frontend/.env.example` to `frontend/.env.local`, set `NEXT_PUBLIC_API_BASE_URL` to the backend URL including `/api`, and restart Next.js. If you change the frontend origin, add its exact origin to Django's `CORS_ALLOWED_ORIGINS` and restart Django. The default allowlist covers both local hostnames on port 3000.
 
@@ -70,10 +70,10 @@ npm --prefix frontend run dev -- --hostname 127.0.0.1 --port 3000
 | Choice | Reason and tradeoff |
 | --- | --- |
 | Django REST Framework and SQLite | The ORM, migrations, serializers, and router cover CRUD with one local database file. SQLite serializes writes, which suits one person's ledger. |
-| Decimal money and a fixed category list | Django validates amounts and categories, and database checks enforce their bounds and choices. Monthly totals use one pass over the month's amounts with Python `Decimal`. Memory use stays bounded, while the work per summary grows with the number of expenses that month. |
+| Decimal money and a fixed category list | Django validates amounts and categories, and database checks enforce their bounds and choices. Totals use one pass over the selected period’s amounts with Python `Decimal`. Memory use stays bounded as the number of expenses grows. |
 | Next.js, TypeScript, and CSS | The App Router hosts a responsive client with a typed API boundary. The editor catches field mistakes before submission and Django validates every write. Dates use `DD/MM/YYYY` in the interface and `YYYY-MM-DD` on the wire. Separate local servers require the API URL and browser origin to match the configuration above. |
 
-**Local access.** Anyone who can reach the API can read and change the same expenses. This release intentionally skips accounts, ownership, and production deployment. Amounts use INR, all six categories are fixed, and the overview covers the current month. The ledger filters work across the full history.
+**Local access.** Anyone who can reach the API can read and change the same expenses. This release intentionally skips accounts, ownership, and production deployment. Amounts use INR and all six categories are fixed. The ledger filters work across the full history.
 
 **Connection loss.** Expense changes require a running API. The UI displays load or save errors and keeps the editor open after a failed save. There is no offline write queue. If the connection drops while saving, check the ledger before resubmitting. A repeated successful create produces another expense.
 
@@ -91,7 +91,7 @@ Use the `/api/` base path and include the trailing slash. Send one JSON object w
 | PATCH | `/api/expenses/{id}/` | 200, updated expense |
 | DELETE | `/api/expenses/{id}/` | 204, empty body |
 | GET | `/api/expenses/categories/` | 200, array of value/label pairs such as `{"value":"Food","label":"Food"}` |
-| GET | `/api/expenses/summary/` | 200, current-month totals |
+| GET | `/api/expenses/summary/` | 200, current-month totals by default or daily totals with `?period=today` |
 
 An expense response looks like this.
 
@@ -139,9 +139,9 @@ Pages start at 1. The default size is 20 and the maximum is 100. Both pagination
 {"count":0,"next":null,"previous":null,"results":[]}
 ```
 
-### Monthly summary
+### Spending summary
 
-The summary is independent of list filters and pagination. The query selects category and amount from the first day of the current month up to the first day of next month, excluding that upper bound. Summing ORM-provided Decimal values avoids SQLite's floating-point SUM. Totals can exceed the per-expense maximum. For example, two Food expenses of `0.10` and `0.20` in November 2026 give this response when they are the month's only records.
+Omit `period` or use `?period=month` for the current calendar month. Use `?period=today` for expenses dated today in Asia/Kolkata. The daily response identifies the day with `date` in `YYYY-MM-DD` format in place of `month`. Both responses include `currency`, `total`, `expense_count`, and totals for all six categories, independently of ledger filters and pagination. Summing ORM-provided Decimal values avoids SQLite's floating-point SUM. Totals can exceed the per-expense maximum. For example, two Food expenses of `0.10` and `0.20` in November 2026 give this response when they are the month's only records.
 
 ```json
 {
@@ -183,6 +183,7 @@ curl -fsS -G "$api/expenses/" \
   --data-urlencode 'page=1' --data-urlencode 'page_size=20'
 curl -fsS "$api/expenses/categories/"
 curl -fsS "$api/expenses/summary/"
+curl -fsS "$api/expenses/summary/?period=today"
 curl -fsS -i -X DELETE "$api/expenses/$id/"
 ```
 
@@ -225,7 +226,7 @@ For a browser check, add a Food expense of `125.50` dated today, then filter the
 │       └── migrations/   # includes 0001_initial.py
 └── frontend/
     ├── app/              # Next.js page, layout, and global styles
-    ├── components/       # monthly overview, expense history, and editor
+    ├── components/       # spending overview, expense history, and editor
     ├── lib/              # Django API client, formatting, and input validation
     ├── .env.example
     ├── next.config.ts

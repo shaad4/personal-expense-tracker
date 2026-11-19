@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { MonthlySummary } from "../lib/api";
+import type { SpendingSummary, SummaryPeriod } from "../lib/api";
 import { formatMoney } from "../lib/format";
 import { Icon } from "./icons";
 
@@ -13,16 +13,21 @@ function PaperFan() {
   );
 }
 
-export default function MonthOverview({ summary, failed }: {
-  summary: MonthlySummary | null;
+export default function SpendingOverview({ period, summary, failed }: {
+  period: SummaryPeriod;
+  summary: SpendingSummary | null;
   failed: boolean;
 }) {
   const entries = summary?.by_category ?? [];
   const amount = summary ? formatMoney(summary.total) : "—";
   const [whole, fraction] = amount.split(".");
   const hasSpend = Boolean(summary?.expense_count);
+  const interval = period === "today" ? "today" : "this month";
+  const status = summary
+    ? `${summary.expense_count} ${summary.expense_count === 1 ? "expense" : "expenses"} ${interval}`
+    : failed ? `Total unavailable for ${interval}` : `Loading total for ${interval}…`;
   return (
-    <section className="summary-grid" aria-label="Current month spending">
+    <section className="summary-grid" aria-label={`Spending ${interval}`} aria-busy={!summary && !failed}>
       <div className="spend-card">
         <PaperFan />
         <div className="spend-content">
@@ -32,7 +37,7 @@ export default function MonthOverview({ summary, failed }: {
           </p>
           <div className="spend-foot">
             <span className="currency-tag">INR</span>
-            <span>{summary ? `${summary.expense_count} ${summary.expense_count === 1 ? "expense" : "expenses"} this month` : failed ? "Monthly total unavailable" : "Loading monthly total…"}</span>
+            <span>{status}</span>
           </div>
         </div>
       </div>
