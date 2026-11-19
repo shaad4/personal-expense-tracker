@@ -83,6 +83,13 @@ class ExpenseAPITests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("amount", response.json())
 
+    @patch("expenses.parsers.json.load", side_effect=RecursionError)
+    def test_json_nesting_limit_returns_client_error(self, _load):
+        response = self.client.post(EXPENSES, MEAL, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"detail": "JSON nesting exceeds the supported depth."})
+        self.assertFalse(Expense.objects.exists())
+
     def test_database_constraints(self):
         for changes in [{"category": "Unexpected"}, {"amount": "0.00"}, {"amount": "100000000.00"}]:
             with (
