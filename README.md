@@ -10,14 +10,18 @@ On a fresh checkout, run these commands from the repository root in a POSIX shel
 python3.12 -m venv .venv
 . .venv/bin/activate
 cd backend
+python -m pip install --only-binary=:all: --upgrade 'pip>=26.3'
 python -m pip install -r requirements-dev.txt
-cp .env.example .env
-python -c "import secrets; from dotenv import set_key; set_key('.env', 'DJANGO_SECRET_KEY', secrets.token_urlsafe(50))"
-python manage.py migrate
+(
+  umask 077
+  cp .env.example .env
+  python -c "import secrets; from dotenv import set_key; set_key('.env', 'DJANGO_SECRET_KEY', secrets.token_urlsafe(50))"
+  python manage.py migrate
+)
 python manage.py runserver 127.0.0.1:8000
 ```
 
-The copy and key-generation steps are for first-time setup. On subsequent runs, activate the environment, enter `backend/`, and run the last two commands. The API accepts hosts `localhost` and `127.0.0.1`. A second terminal can check the server with `curl http://127.0.0.1:8000/api/health/`.
+The first-time setup creates the secret and SQLite database with owner-only permissions. On subsequent runs, activate the environment, enter `backend/`, apply new migrations with `python manage.py migrate`, and start the server. The API accepts hosts `localhost` and `127.0.0.1`. A second terminal can check the server with `curl http://127.0.0.1:8000/api/health/`.
 
 Settings load from `backend/.env`, with existing environment variables taking precedence. Keep the generated `DJANGO_SECRET_KEY` private. `DJANGO_DEBUG=False` is the default. `CORS_ALLOWED_ORIGINS` is a comma-separated allowlist that defaults to `http://localhost:3000,http://127.0.0.1:3000`. Both the database and the local environment file are ignored by Git.
 
