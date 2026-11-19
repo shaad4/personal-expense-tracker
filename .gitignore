@@ -1,0 +1,67 @@
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.*.sample
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django local database files
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Django generated assets and uploaded files
+/backend/staticfiles/
+/backend/media/
+
+# Node.js dependencies and Next.js output
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+
+# Python tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pytype/
+.tox/
+.nox/
+
+# Test coverage output
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+coverage.xml
+
+# Logs
+*.log
+
+# Local IDE settings
+.idea/
+.vscode/
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# Keep Django migrations, environment templates,
+# requirements files, and package-manager lockfiles in Git.
