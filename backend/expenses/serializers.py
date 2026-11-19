@@ -8,6 +8,9 @@ from rest_framework.fields import empty
 from .models import MAX_AMOUNT, MIN_AMOUNT, Category, Expense
 from .validators import normalize_plain_text
 
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 100
+
 
 class PlainTextField(serializers.CharField):
     def __init__(self, *, multiline=False, **kwargs):
@@ -117,7 +120,7 @@ class ExpenseListQuerySerializer(serializers.Serializer):
     end_date = DateOnlyField(required=False)
     title = serializers.CharField(max_length=200, required=False)
     page = PageIntegerField(min_value=1, default=1)
-    page_size = PageIntegerField(min_value=1, max_value=100, default=20)
+    page_size = PageIntegerField(min_value=1, max_value=MAX_PAGE_SIZE, default=DEFAULT_PAGE_SIZE)
 
     def to_internal_value(self, data):
         check_input_keys(data, self.fields)

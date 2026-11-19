@@ -1,11 +1,18 @@
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ParseError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from .models import Expense
 from .parsers import ExpenseJSONParser
-from .serializers import ExpenseSerializer
+from .queries import filter_expenses
+from .serializers import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    ExpenseListQuerySerializer,
+    ExpenseSerializer,
+)
 
 
 @api_view(["GET"])
@@ -13,11 +20,26 @@ def health(request):
     return Response({"status": "ok"})
 
 
+class ExpensePagination(PageNumberPagination):
+    page_size = DEFAULT_PAGE_SIZE
+    max_page_size = MAX_PAGE_SIZE
+    page_size_query_param = "page_size"
+
+
 class ExpenseViewSet(viewsets.ModelViewSet):
     queryset = Expense.objects.all()
     serializer_class = ExpenseSerializer
+    pagination_class = ExpensePagination
     parser_classes = [ExpenseJSONParser]
     lookup_value_regex = "[0-9]+"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action == "list":
+            query = ExpenseListQuerySerializer(data=self.request.query_params)
+            query.is_valid(raise_exception=True)
+            return filter_expenses(queryset, query.validated_data)
+        return queryset
 
     def get_serializer(self, *args, **kwargs):
         # DRF represents a missing body as {}, which is also a valid empty PATCH.
