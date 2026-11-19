@@ -178,7 +178,7 @@
   .history-table :is(th, td):first-child { padding-left: 18px; }
   .history-table :is(th, td):last-child { padding-right: 18px; }
   .history-entry { gap: 9px; }
-  .history-mobile-meta { display: block; }
+  .history-mobile-meta { display: block; white-space: normal; line-height: 1.3; }
   .history-entry-note { display: none; }
   .history-popover { max-width: calc(100vw - 64px); }
   .history-pagination { padding-inline: 18px; }
