@@ -12,9 +12,10 @@ type Props = Pick<ComponentPropsWithoutRef<"input">,
   value: string;
   onValueChange: (value: string) => void;
   calendarLabel: string;
+  max?: string;
 };
 
-export default function DateInput({ value, onValueChange, calendarLabel, ...props }: Props) {
+export default function DateInput({ value, onValueChange, calendarLabel, max = "9999-12-31", ...props }: Props) {
   return (
     <span className="date-input">
       <input {...props} className="date-input-text" type="text" placeholder="DD/MM/YYYY"
@@ -23,7 +24,7 @@ export default function DateInput({ value, onValueChange, calendarLabel, ...prop
       <span className="date-input-calendar">
         <Icon name="calendar" size={16} />
         <input className="date-input-native" aria-label={calendarLabel} type="date"
-          min="0001-01-01" max="9999-12-31" value={parseDisplayDate(value) ?? ""}
+          min="0001-01-01" max={max} value={parseDisplayDate(value) ?? ""}
           onChange={(event) => onValueChange(formatDate(event.currentTarget.value))} />
       </span>
     </span>

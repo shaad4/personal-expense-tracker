@@ -36,7 +36,7 @@ function currencyValue(raw: string): string | undefined {
   return rupees + "." + paise;
 }
 
-export function validateExpense(draft: ExpenseDraft, categories: CategoryOption[]) {
+export function validateExpense(draft: ExpenseDraft, categories: CategoryOption[], originalDate?: string) {
   const errors: FieldErrors = {};
   const title = draft.title.trim();
   const note = draft.note.replace(/\r\n?/g, "\n").trim();
@@ -51,6 +51,7 @@ export function validateExpense(draft: ExpenseDraft, categories: CategoryOption[
   if (!amount) errors.amount = "Enter ₹0.01 to ₹9,99,99,999.99 with up to two decimal places.";
   if (!categories.some(({ value }) => value === draft.category)) errors.category = "Choose a category.";
   if (!date) errors.date = "Enter a valid date in DD/MM/YYYY format.";
+  else if (date !== originalDate && date > todayInKolkata()) errors.date = "Expense dates cannot be in the future.";
   if (/[\p{Cc}\p{Cs}]/u.test(draft.note.replace(/[\r\n\t]/g, ""))) {
     errors.note = "Use plain text, tabs, or line breaks.";
   } else if ([...note].length > 2000) errors.note = "Use 2,000 characters or fewer.";

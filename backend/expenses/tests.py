@@ -34,8 +34,18 @@ class ExpenseAPITests(APITestCase):
         self.assertEqual(expense["amount"], "0.10")
         self.assertEqual(expense["category"], "Food")
         self.assertEqual(expense["note"], "")
-        note = self.create_expense(note="  first\r\nnext\titem\rlast  ")["note"]
+        note = self.create_expense(date="2026-12-01", note="  first\r\nnext\titem\rlast  ")["note"]
         self.assertEqual(note, "first\nnext\titem\nlast")
+        future = {**MEAL, "date": "2026-12-02"}
+        detail = f"{EXPENSES}{expense['id']}/"
+        for response in (
+            self.client.post(EXPENSES, future, format="json"),
+            self.client.put(detail, future, format="json"),
+            self.client.patch(detail, {"date": future["date"]}, format="json"),
+        ):
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("date", response.json())
+        self.assertEqual(self.client.get(detail).json(), expense)
 
     def test_invalid_fields(self):
         invalid = {
@@ -99,7 +109,8 @@ class ExpenseAPITests(APITestCase):
             ):
                 Expense.objects.create(**{**MEAL, **changes})
 
-    def test_update_contract_rollback_and_delete(self):
+    @patch("django.utils.timezone.now", return_value=datetime(2032, 2, 29, 12, tzinfo=UTC))
+    def test_update_contract_rollback_and_delete(self, _now):
         original = self.create_expense(date="2020-06-15", note="keep")
         detail = f"{EXPENSES}{original['id']}/?category=Bills"
         self.assertEqual(self.client.get(detail).json(), original)
@@ -132,7 +143,8 @@ class ExpenseAPITests(APITestCase):
         self.assertEqual(missing.status_code, 404)
         self.assertEqual(self.client.delete(detail).status_code, 404)
 
-    def test_combined_filters_and_boundaries(self):
+    @patch("django.utils.timezone.now", return_value=datetime(2026, 12, 1, 12, tzinfo=UTC))
+    def test_combined_filters_and_boundaries(self, _now):
         for day in ["2026-10-31", "2026-11-01", "2026-11-30", "2026-12-01"]:
             self.create_expense(title="Iced COFFEE", date=day)
         self.create_expense(title="Coffee mug", date="2026-11-01", category="Shopping")
@@ -189,10 +201,11 @@ class ExpenseAPITests(APITestCase):
         self.assertEqual(len(self.client.get(EXPENSES, {"page_size": "3"}).json()["results"]), 3)
         self.assertEqual(self.client.get(EXPENSES, {"page": "3"}).status_code, 404)
 
-    @patch("django.utils.timezone.now", return_value=datetime(2026, 11, 30, 19, tzinfo=UTC))
+    @patch("django.utils.timezone.now", return_value=datetime(2026, 12, 31, 12, tzinfo=UTC))
     def test_december_summary_and_mutations(self, _now):
         self.create_expense(date="2026-11-30")
-        self.create_expense(date="2027-01-01")
+        # A future-dated row saved before write validation must stay outside December.
+        Expense.objects.create(**MEAL, date="2027-01-01")
         empty = self.client.get(SUMMARY).json()
         self.assertEqual(
             empty,

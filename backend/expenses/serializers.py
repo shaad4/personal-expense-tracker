@@ -1,6 +1,7 @@
 import re
 from collections.abc import Mapping
 
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.fields import empty
@@ -83,6 +84,11 @@ class ExpenseSerializer(serializers.ModelSerializer):
         model = Expense
         fields = ("id", "title", "amount", "category", "date", "note", "created_at", "updated_at")
         read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate_date(self, value):
+        if value > timezone.localdate():
+            raise serializers.ValidationError("Expense dates cannot be in the future.")
+        return value
 
     def get_fields(self):
         fields = super().get_fields()

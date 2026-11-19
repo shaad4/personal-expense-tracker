@@ -91,7 +91,7 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (locked.current) return;
-    const { errors: clientErrors, data } = validateExpense(draft, categories);
+    const { errors: clientErrors, data } = validateExpense(draft, categories, expense?.date);
     if (!confirmDelete && Object.keys(clientErrors).length) {
       showFieldErrors(clientErrors);
       return;
@@ -170,7 +170,7 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
               </div>
               <div className="expense-form-field">
                 <label htmlFor="expense-date">Date</label>
-                <DateInput id="expense-date" name="date" value={draft.date} required
+                <DateInput id="expense-date" name="date" value={draft.date} max={todayInKolkata()} required
                   calendarLabel="Choose expense date from calendar"
                   aria-invalid={!!errors.date} aria-describedby={errors.date ? "expense-date-error" : undefined}
                   onValueChange={(value) => changeField("date", value)} />
