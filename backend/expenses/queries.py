@@ -21,16 +21,19 @@ def filter_expenses(queryset: QuerySet[Expense], params: Mapping) -> QuerySet[Ex
     return queryset
 
 
-def monthly_summary() -> dict:
-    month_start = timezone.localdate().replace(day=1)
-    days_in_month = monthrange(month_start.year, month_start.month)[1]
-    next_month_start = month_start + timedelta(days=days_in_month)
+def spending_summary(*, today_only: bool = False) -> dict:
+    today = timezone.localdate()
+    if today_only:
+        period = {"date": today.isoformat()}
+        expenses = Expense.objects.filter(date=today)
+    else:
+        month_start = today.replace(day=1)
+        days_in_month = monthrange(today.year, today.month)[1]
+        next_month_start = month_start + timedelta(days=days_in_month)
+        period = {"month": month_start.isoformat()[:7]}
+        expenses = Expense.objects.filter(date__gte=month_start, date__lt=next_month_start)
 
-    rows = (
-        Expense.objects.filter(date__gte=month_start, date__lt=next_month_start)
-        .order_by()
-        .values_list("category", "amount")
-    )
+    rows = expenses.order_by().values_list("category", "amount")
     by_category = dict.fromkeys(Category.values, Decimal("0.00"))
     total = Decimal("0.00")
     expense_count = 0
@@ -41,7 +44,7 @@ def monthly_summary() -> dict:
         expense_count += 1
 
     return {
-        "month": month_start.isoformat()[:7],
+        **period,
         "currency": "INR",
         "total": format(total, ".2f"),
         "expense_count": expense_count,

@@ -1,12 +1,12 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action, api_view
-from rest_framework.exceptions import ParseError
+from rest_framework.exceptions import ParseError, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from .models import Category, Expense
 from .parsers import ExpenseJSONParser
-from .queries import filter_expenses, monthly_summary
+from .queries import filter_expenses, spending_summary
 from .serializers import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
@@ -53,4 +53,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def summary(self, request):
-        return Response(monthly_summary())
+        period = request.query_params.get("period", "month")
+        if period not in ("month", "today"):
+            raise ValidationError({"period": ["Choose month or today."]})
+        return Response(spending_summary(today_only=period == "today"))
