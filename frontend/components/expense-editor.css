@@ -47,6 +47,21 @@
 .expense-form-field { display: grid; align-content: start; min-width: 0; gap: .4rem; }
 .expense-form-field > label, .expense-category-field legend { font-size: .875rem; color: var(--ink); font-weight: 600; }
 .expense-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+.expense-form-field .expense-future-option {
+  display: inline-flex; align-items: center; gap: .45rem; justify-self: start;
+  min-height: 1.75rem; color: var(--secondary); font-size: .8rem; font-weight: 500; cursor: pointer;
+}
+.expense-future-option input {
+  appearance: none; flex: none; display: grid; align-items: center;
+  width: 1.9rem; height: 1.1rem; margin: 0; padding: 2px; box-sizing: border-box;
+  border: 1px solid var(--secondary); border-radius: 1rem; background: var(--surface-subtle); cursor: inherit;
+}
+.expense-future-option input::before {
+  content: ""; width: .65rem; height: .65rem; border-radius: 50%; background: var(--secondary);
+}
+.expense-future-option input:checked { background: var(--accent); border-color: var(--accent); }
+.expense-future-option input:checked::before { justify-self: end; background: var(--on-accent); }
+.expense-future-option input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .expense-optional { margin-left: .25rem; font-weight: 400; color: var(--secondary); font-size: .82rem; }
 .expense-sheet :where(input[type=text], textarea) {
   box-sizing: border-box; width: 100%; min-width: 0; min-height: 2.75rem; padding: .6rem .75rem;
@@ -139,6 +154,8 @@
   .expense-form-row { grid-template-columns: 1fr; }
 }
 @media (forced-colors: active) {
+  .expense-future-option input { appearance: auto; }
+  .expense-future-option input::before { content: none; }
   .expense-category-option:has(input:checked) { border: 2px solid Highlight; }
   .expense-category-check { forced-color-adjust: none; background: Highlight; color: HighlightText; }
 }

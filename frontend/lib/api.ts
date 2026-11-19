@@ -90,6 +90,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 type CreateExpenseInput = Omit<ExpenseInput, "date" | "note"> & Partial<Pick<ExpenseInput, "date" | "note">>;
+type ExpenseWriteOptions = { allow_future_date?: boolean };
 
 export const api = {
   listExpenses(filters: ExpenseFilters = {}, signal?: AbortSignal) {
@@ -103,9 +104,9 @@ export const api = {
   getSummary: (period: SummaryPeriod, signal?: AbortSignal) =>
     request<SpendingSummary>(period === "today" ? "expenses/summary/?period=today" : "expenses/summary/", { signal }),
   getCategories: (signal?: AbortSignal) => request<CategoryOption[]>("expenses/categories/", { signal }),
-  createExpense: (input: CreateExpenseInput) =>
+  createExpense: (input: CreateExpenseInput & ExpenseWriteOptions) =>
     request<Expense>("expenses/", { method: "POST", body: JSON.stringify(input) }),
-  updateExpense: (id: number, changes: Partial<ExpenseInput>) =>
+  updateExpense: (id: number, changes: Partial<ExpenseInput> & ExpenseWriteOptions) =>
     request<Expense>(`expenses/${id}/`, { method: "PATCH", body: JSON.stringify(changes) }),
   deleteExpense: (id: number) => request<void>(`expenses/${id}/`, { method: "DELETE" }),
 };

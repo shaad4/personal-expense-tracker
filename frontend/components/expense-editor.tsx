@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { api, ApiError, type CategoryOption, type Expense, type ExpenseInput } from "../lib/api";
 import { formatDate } from "../lib/format";
-import { expenseFields, todayInKolkata, validateExpense, type ExpenseDraft, type FieldErrors } from "../lib/validation";
+import { expenseFields, futureDateMessage, parseDisplayDate, todayInKolkata, validateExpense, type ExpenseDraft, type FieldErrors } from "../lib/validation";
 import DateInput from "./date-input";
 import { CategoryIcon, Icon } from "./icons";
 import "./expense-editor.css";
@@ -23,6 +23,7 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
     date: formatDate(expense?.date ?? todayInKolkata()),
     note: expense?.note ?? "",
   }));
+  const [allowFutureDate, setAllowFutureDate] = useState(() => !!expense && expense.date > todayInKolkata());
   const [errors, setErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -67,6 +68,14 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
     setErrorMessage("");
   }
 
+  function toggleFutureDate(allowed: boolean) {
+    setAllowFutureDate(allowed);
+    const date = parseDisplayDate(draft.date);
+    if (date && date > todayInKolkata()) {
+      setErrors(previous => ({ ...previous, date: allowed ? undefined : futureDateMessage }));
+    }
+  }
+
   function fieldProps(name: keyof ExpenseDraft) {
     return {
       name, id: "expense-" + name, value: draft[name],
@@ -91,7 +100,7 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (locked.current) return;
-    const { errors: clientErrors, data } = validateExpense(draft, categories, expense?.date);
+    const { errors: clientErrors, data } = validateExpense(draft, categories, allowFutureDate);
     if (!confirmDelete && Object.keys(clientErrors).length) {
       showFieldErrors(clientErrors);
       return;
@@ -99,6 +108,7 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
     locked.current = true;
     setBusy(true);
     setErrorMessage("");
+    const dateOptions = allowFutureDate ? { allow_future_date: true } : {};
     try {
       if (confirmDelete && expense) {
         await api.deleteExpense(expense.id);
@@ -112,10 +122,10 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
           onClose();
           return;
         }
-        await api.updateExpense(expense.id, changes);
+        await api.updateExpense(expense.id, { ...changes, ...dateOptions });
         onSaved("Changes saved.");
       } else {
-        await api.createExpense(data);
+        await api.createExpense({ ...data, ...dateOptions });
         onSaved("Expense added.");
       }
     } catch (error) {
@@ -170,11 +180,16 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
               </div>
               <div className="expense-form-field">
                 <label htmlFor="expense-date">Date</label>
-                <DateInput id="expense-date" name="date" value={draft.date} max={todayInKolkata()} required
+                <DateInput id="expense-date" name="date" value={draft.date} max={allowFutureDate ? undefined : todayInKolkata()} required
                   calendarLabel="Choose expense date from calendar"
                   aria-invalid={!!errors.date} aria-describedby={errors.date ? "expense-date-error" : undefined}
                   onValueChange={(value) => changeField("date", value)} />
                 {fieldError("date")}
+                <label className="expense-future-option">
+                  <input type="checkbox" role="switch" checked={allowFutureDate}
+                    onChange={event => toggleFutureDate(event.currentTarget.checked)} />
+                  Allow future date
+                </label>
               </div>
             </div>
             <fieldset className="expense-category-field">
