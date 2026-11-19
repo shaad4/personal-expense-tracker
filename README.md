@@ -1,10 +1,14 @@
 # Personal expense tracker
 
-A local, single-user Django REST API for recording INR expenses. It supports CRUD, filtered and paginated history, and a spending breakdown for the current calendar month in Asia/Kolkata. SQLite stores expenses in `backend/db.sqlite3`. The `frontend/` directory is reserved for the next phase.
+Folio is a single-user expense tracker with a responsive Next.js interface and a Django REST API. Record an INR expense, select a row to edit or delete it, and search your history by title, category, or date range. The overview shows the current calendar month's spending in Asia/Kolkata and totals for each category. Django stores expenses in `backend/db.sqlite3`.
 
 ## Run locally
 
-On a fresh checkout, run these commands from the repository root in a POSIX shell. Python 3.12.3 was used for development.
+Use two POSIX terminals, both starting at the repository root. The backend was developed with Python 3.12.3. The frontend requires Node.js 22.13 or later and npm.
+
+### Terminal 1 — Django API
+
+On a fresh checkout, install the Python dependencies, create the local settings and database, and start the API.
 
 ```sh
 python3.12 -m venv .venv
@@ -21,11 +25,25 @@ python -m pip install -r requirements-dev.txt
 python manage.py runserver 127.0.0.1:8000
 ```
 
-The first-time setup creates the secret and SQLite database with owner-only permissions. On subsequent runs, activate the environment, enter `backend/`, apply new migrations with `python manage.py migrate`, and start the server. The API accepts hosts `localhost` and `127.0.0.1`. A second terminal can check the server with `curl http://127.0.0.1:8000/api/health/`.
+The first-time setup creates the secret and SQLite database with owner-only permissions. On subsequent runs, activate the environment, enter `backend/`, apply new migrations with `python manage.py migrate`, and start the server. The API accepts hosts `localhost` and `127.0.0.1`. Check it from another terminal with `curl http://127.0.0.1:8000/api/health/`.
 
 Settings load from `backend/.env`, with existing environment variables taking precedence. Keep the generated `DJANGO_SECRET_KEY` private. `DJANGO_DEBUG=False` is the default. `CORS_ALLOWED_ORIGINS` is a comma-separated allowlist that defaults to `http://localhost:3000,http://127.0.0.1:3000`. Both the database and the local environment file are ignored by Git.
 
 The runtime pins are Django 6.1.3, Django REST Framework 3.18.3, django-cors-headers 4.9.0, and python-dotenv 1.2.4. The development install adds Ruff 0.17.5. [Runtime requirements](backend/requirements.txt) · [Development requirements](backend/requirements-dev.txt)
+
+### Terminal 2 — Next.js frontend
+
+```sh
+cd frontend
+npm ci
+npm run dev -- --hostname 127.0.0.1
+```
+
+Open [Folio at 127.0.0.1:3000](http://127.0.0.1:3000) and keep both servers running. For subsequent sessions, run the same startup commands from the two project directories. Repeat `npm ci` when the frontend lockfile changes.
+
+The browser calls `http://127.0.0.1:8000/api` by default. To change the API URL, copy `frontend/.env.example` to `frontend/.env.local`, set `NEXT_PUBLIC_API_BASE_URL` to the backend URL including `/api`, and restart Next.js. If you change the frontend origin, add its exact origin to Django's `CORS_ALLOWED_ORIGINS` and restart Django. The default allowlist covers both local hostnames on port 3000.
+
+The expense editor checks the title, amount, category, date, and note before submission, and displays any validation errors returned by Django. Editing uses PATCH, deletion requires confirmation, and the overview and history refresh after changes.
 
 ## API contract
 
@@ -112,7 +130,7 @@ The summary always covers the current calendar month in Asia/Kolkata, independen
 
 ### Try the API
 
-Run these commands in a second terminal with Python 3 available. They create an example record, use the ID returned by the server, and delete that record at the end.
+Run these commands in another terminal with Python 3 available. They create an example record, use the ID returned by the server, and delete that record at the end.
 
 ```sh
 api=http://127.0.0.1:8000/api
@@ -149,6 +167,13 @@ ruff check .
 ruff format --check .
 ```
 
+Run the frontend checks from `frontend/` after installing its dependencies.
+
+```sh
+npm run typecheck
+npm run build
+```
+
 ```text
 .
 ├── README.md
@@ -163,7 +188,14 @@ ruff format --check .
 │   └── expenses/         # model, serializers, validators, queries, views, URLs, tests
 │       └── migrations/   # includes 0001_initial.py
 └── frontend/
-    └── .gitkeep
+    ├── app/              # Next.js page, layout, and global styles
+    ├── components/       # monthly overview, expense history, and editor
+    ├── lib/              # Django API client, formatting, and input validation
+    ├── .env.example
+    ├── next.config.ts
+    ├── package.json
+    ├── package-lock.json
+    └── tsconfig.json
 ```
 
-This phase is intended for one person on a trusted local machine. All clients that can reach the API share the same expenses. CORS controls access from browser origins. SQLite and the one-pass monthly calculation suit a small personal history. User accounts, deployment configuration, and the Next.js interface are outside this phase.
+Folio is intended for one person on a trusted local machine. All clients that can reach the API share the same expenses. CORS controls access from browser origins. SQLite and the one-pass monthly calculation suit a small personal history.
