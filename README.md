@@ -1,10 +1,17 @@
-# Personal expense tracker
+# Folio · Personal expense tracker
 
-Folio is a single-user expense tracker with a responsive Next.js interface and a Django REST API. Record an INR expense, select a row to edit or delete it, and search your history by title, category, or date range. The overview shows the current calendar month's spending in Asia/Kolkata and totals for each category. Django stores expenses in `backend/db.sqlite3`.
+Folio is a local, single-user INR expense tracker. Add an expense with the icon-based category picker, select a ledger row to edit or delete it, and combine title, category, and date filters. The overview shows spending for the current calendar month in Asia/Kolkata. The responsive interface follows the device's light or dark appearance until you choose a theme in the header. That choice is saved in browser storage.
 
 ## Run locally
 
-Use two POSIX terminals, both starting at the repository root. The backend was developed with Python 3.12.3. The frontend requires Node.js 22.13 or later and npm.
+Use Python 3.12 with `venv`, Node.js 22.13 or later, npm, and a POSIX shell. To check out the development branch for review, run the commands below.
+
+```sh
+git clone --branch dev https://github.com/shaad4/personal-expense-tracker.git
+cd personal-expense-tracker
+```
+
+Open two terminals at the repository root. Keep both servers running while using the tracker.
 
 ### Terminal 1 — Django API
 
@@ -25,7 +32,7 @@ python -m pip install -r requirements-dev.txt
 python manage.py runserver 127.0.0.1:8000
 ```
 
-The first-time setup creates the secret and SQLite database with owner-only permissions. On subsequent runs, activate the environment, enter `backend/`, apply new migrations with `python manage.py migrate`, and start the server. The API accepts hosts `localhost` and `127.0.0.1`. Check it from another terminal with `curl http://127.0.0.1:8000/api/health/`.
+The first-time setup creates the secret and SQLite database with owner-only permissions. Django stores expenses in `backend/db.sqlite3` across restarts. Check that the API is running with `curl -fsS http://127.0.0.1:8000/api/health/`. It should return `{"status":"ok"}`.
 
 Settings load from `backend/.env`, with existing environment variables taking precedence. Keep the generated `DJANGO_SECRET_KEY` private. `DJANGO_DEBUG=False` is the default. `CORS_ALLOWED_ORIGINS` is a comma-separated allowlist that defaults to `http://localhost:3000,http://127.0.0.1:3000`. Both the database and the local environment file are ignored by Git.
 
@@ -36,16 +43,39 @@ The runtime pins are Django 6.1.3, Django REST Framework 3.18.3, django-cors-hea
 ```sh
 cd frontend
 npm ci
-npm run dev -- --hostname 127.0.0.1
+npm run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
-Open [Folio at 127.0.0.1:3000](http://127.0.0.1:3000) and keep both servers running. For subsequent sessions, run the same startup commands from the two project directories. Repeat `npm ci` when the frontend lockfile changes.
+Open the [monthly summary in Folio](http://127.0.0.1:3000/#monthly-summary). **Total spent** and **Category breakdown** show this month's spending independently of ledger filters. The same totals are available from [GET /api/expenses/summary/](http://127.0.0.1:8000/api/expenses/summary/).
 
 The browser calls `http://127.0.0.1:8000/api` by default. To change the API URL, copy `frontend/.env.example` to `frontend/.env.local`, set `NEXT_PUBLIC_API_BASE_URL` to the backend URL including `/api`, and restart Next.js. If you change the frontend origin, add its exact origin to Django's `CORS_ALLOWED_ORIGINS` and restart Django. The default allowlist covers both local hostnames on port 3000.
 
-Select a category by its icon and label when adding or editing an expense. The editor and filters use `DD/MM/YYYY`; the browser converts valid dates to `YYYY-MM-DD` for Django. The editor checks all fields before submission and displays any validation errors returned by the API. Editing uses PATCH, deletion requires confirmation, and the overview and history refresh after changes.
+### Subsequent runs
 
-Folio follows the device’s light or dark appearance on first use. The switch in the header saves your preference in this browser.
+From the repository root, run the following commands in separate terminals. Reinstall dependencies if their requirement files or lockfile change.
+
+```sh
+# Terminal 1
+.venv/bin/python backend/manage.py migrate
+.venv/bin/python backend/manage.py runserver 127.0.0.1:8000
+```
+
+```sh
+# Terminal 2
+npm --prefix frontend run dev -- --hostname 127.0.0.1 --port 3000
+```
+
+## Design choices and scope
+
+| Choice | Reason and tradeoff |
+| --- | --- |
+| Django REST Framework and SQLite | The ORM, migrations, serializers, and router cover CRUD with one local database file. SQLite serializes writes, which suits one person's ledger. |
+| Decimal money and a fixed category list | Django validates amounts and categories, and database checks enforce their bounds and choices. Monthly totals use one pass over the month's amounts with Python `Decimal`. Memory use stays bounded, while the work per summary grows with the number of expenses that month. |
+| Next.js, TypeScript, and CSS | The App Router hosts a responsive client with a typed API boundary. The editor catches field mistakes before submission and Django validates every write. Dates use `DD/MM/YYYY` in the interface and `YYYY-MM-DD` on the wire. Separate local servers require the API URL and browser origin to match the configuration above. |
+
+**Local access.** Anyone who can reach the API can read and change the same expenses. This release intentionally skips accounts, ownership, and production deployment. Amounts use INR, all six categories are fixed, and the overview covers the current month. The ledger filters work across the full history.
+
+**Connection loss.** Expense changes require a running API. The UI displays load or save errors and keeps the editor open after a failed save. There is no offline write queue. If the connection drops while saving, check the ledger before resubmitting. A repeated successful create produces another expense.
 
 ## API contract
 
@@ -84,7 +114,7 @@ An expense response looks like this.
 | PUT | `title`, `amount`, `category`, `date` | `note` resets to `""`. |
 | PATCH | Supply the fields you want to change. | Each omitted field keeps its value. |
 
-The server manages `id`, `created_at`, and `updated_at`. Supplying one of these or an unknown key returns 400. A failed write leaves the stored expense intact.
+The server manages `id`, `created_at`, and `updated_at`. Supplying one of these or an unknown key returns 400. A validation error leaves the stored expense intact.
 
 - **Title and note.** Both take JSON strings. The title must contain 1–200 characters after trimming and fit on a single line. The optional note accepts up to 2,000 characters after normalization. CRLF and CR become LF. Surrounding whitespace is trimmed and internal line breaks and tabs in notes are preserved. Nulls and inappropriate control characters are rejected.
 - **Amount.** Send a decimal string such as `"125.50"` to preserve precision across JavaScript and JSON. JSON numbers are also accepted. The inclusive range is `0.01` through `99999999.99`, with at most two decimal places. Extra precision produces a validation error. All monetary responses are strings with exactly two decimal places.
@@ -111,7 +141,7 @@ Pages start at 1. The default size is 20 and the maximum is 100. Both pagination
 
 ### Monthly summary
 
-The summary always covers the current calendar month in Asia/Kolkata, independently of list filters and pagination. The query selects category and amount from the first day of this month up to the first day of next month, excluding that upper bound. It streams the rows once and adds ORM-provided Decimal amounts in Python to avoid SQLite's floating-point SUM. Totals can exceed the per-expense maximum. For example, two Food expenses of `0.10` and `0.20` in November 2026 give this response when they are the month's only records.
+The summary is independent of list filters and pagination. The query selects category and amount from the first day of the current month up to the first day of next month, excluding that upper bound. Summing ORM-provided Decimal values avoids SQLite's floating-point SUM. Totals can exceed the per-expense maximum. For example, two Food expenses of `0.10` and `0.20` in November 2026 give this response when they are the month's only records.
 
 ```json
 {
@@ -156,7 +186,7 @@ curl -fsS "$api/expenses/summary/"
 curl -fsS -i -X DELETE "$api/expenses/$id/"
 ```
 
-## Verification and layout
+## Verification
 
 With the virtual environment active, run these checks from `backend/`. Django's test runner uses a separate database for the API checks.
 
@@ -175,6 +205,10 @@ Run the frontend checks from `frontend/` after installing its dependencies.
 npm run typecheck
 npm run build
 ```
+
+For a browser check, add a Food expense of `125.50` dated today, then filter the ledger by a different category. The ledger should hide the row while the month's total still includes it. Clear the filter, edit the row, and confirm that the total changes. Delete the example to restore your original data.
+
+## Project layout
 
 ```text
 .
@@ -199,5 +233,3 @@ npm run build
     ├── package-lock.json
     └── tsconfig.json
 ```
-
-Folio is intended for one person on a trusted local machine. All clients that can reach the API share the same expenses. CORS controls access from browser origins. SQLite and the one-pass monthly calculation suit a small personal history.
