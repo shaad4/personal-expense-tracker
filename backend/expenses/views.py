@@ -1,12 +1,12 @@
 from rest_framework import viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import ParseError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from .models import Expense
+from .models import Category, Expense
 from .parsers import ExpenseJSONParser
-from .queries import filter_expenses
+from .queries import filter_expenses, monthly_summary
 from .serializers import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
@@ -46,3 +46,11 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         if "data" in kwargs and self.request.stream is None:
             raise ParseError("Expected a JSON object in the request body.")
         return super().get_serializer(*args, **kwargs)
+
+    @action(detail=False, methods=["get"])
+    def categories(self, request):
+        return Response([{"value": value, "label": label} for value, label in Category.choices])
+
+    @action(detail=False, methods=["get"])
+    def summary(self, request):
+        return Response(monthly_summary())
