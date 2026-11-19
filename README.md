@@ -43,7 +43,9 @@ Open [Folio at 127.0.0.1:3000](http://127.0.0.1:3000) and keep both servers runn
 
 The browser calls `http://127.0.0.1:8000/api` by default. To change the API URL, copy `frontend/.env.example` to `frontend/.env.local`, set `NEXT_PUBLIC_API_BASE_URL` to the backend URL including `/api`, and restart Next.js. If you change the frontend origin, add its exact origin to Django's `CORS_ALLOWED_ORIGINS` and restart Django. The default allowlist covers both local hostnames on port 3000.
 
-The expense editor checks the title, amount, category, date, and note before submission, and displays any validation errors returned by Django. Editing uses PATCH, deletion requires confirmation, and the overview and history refresh after changes.
+Select a category by its icon and label when adding or editing an expense. The editor and filters use `DD/MM/YYYY`; the browser converts valid dates to `YYYY-MM-DD` for Django. The editor checks all fields before submission and displays any validation errors returned by the API. Editing uses PATCH, deletion requires confirmation, and the overview and history refresh after changes.
+
+Folio follows the device’s light or dark appearance on first use. The switch in the header saves your preference in this browser.
 
 ## API contract
 

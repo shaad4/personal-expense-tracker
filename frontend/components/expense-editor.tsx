@@ -5,7 +5,7 @@ import { api, ApiError, type CategoryOption, type Expense, type ExpenseInput } f
 import { formatDate } from "../lib/format";
 import { expenseFields, todayInKolkata, validateExpense, type ExpenseDraft, type FieldErrors } from "../lib/validation";
 import DateInput from "./date-input";
-import { Icon } from "./icons";
+import { CategoryIcon, Icon } from "./icons";
 import "./expense-editor.css";
 
 type Props = {
@@ -141,6 +141,9 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
       onCancel={event => { event.preventDefault(); dismiss(); }}>
       <form onSubmit={submit} noValidate aria-busy={busy}>
         <header className="expense-sheet-head">
+          <span className="expense-sheet-mark">
+            <Icon name={confirmDelete ? "trash" : "receipt"} size={21} />
+          </span>
           <h2 id="expense-sheet-title">{confirmDelete ? "Delete expense?" : expense ? "Edit expense" : "Add expense"}</h2>
           <button className="expense-sheet-close" type="button" onClick={dismiss} disabled={busy} aria-label="Close dialog">
             <Icon name="x" size={17} />
@@ -174,17 +177,21 @@ export default function ExpenseEditor({ expense, categories, onClose, onSaved }:
                 {fieldError("date")}
               </div>
             </div>
-            <div className="expense-form-field">
-              <label htmlFor="expense-category">Category</label>
-              <div className="expense-category-select">
-                <select {...fieldProps("category")} required>
-                  <option value="" disabled>Choose a category</option>
-                  {categories.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-                </select>
-                <Icon name="chevron-down" size={16} />
+            <fieldset className="expense-category-field">
+              <legend>Category</legend>
+              <div className="expense-category-options">
+                {categories.map(({ value, label }) => (
+                  <label key={value} className={`expense-category-option category-${value.toLowerCase()}`}>
+                    <input {...fieldProps("category")} id={`expense-category-${value}`}
+                      type="radio" value={value} checked={draft.category === value} required />
+                    <CategoryIcon category={value} size={18} />
+                    <span className="expense-category-label">{label}</span>
+                    <span className="expense-category-check"><Icon name="check" size={12} /></span>
+                  </label>
+                ))}
               </div>
               {fieldError("category")}
-            </div>
+            </fieldset>
             <div className="expense-form-field">
               <label htmlFor="expense-note">Note <span className="expense-optional">Optional</span></label>
               <textarea {...fieldProps("note")} rows={3} placeholder="Add a note…" />
