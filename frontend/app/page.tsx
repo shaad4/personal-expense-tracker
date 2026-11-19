@@ -87,7 +87,7 @@ export default function Dashboard() {
       <main id="overview" className="frame dashboard">
         <div className="overview-heading">
           <div>
-            <h1>Spending overview</h1>
+            <h1 id="monthly-summary">Monthly summary</h1>
             <p>{summary ? monthLabel(summary.month) : "This month"}</p>
           </div>
           <button className="add-expense" type="button" onClick={() => openEditor(null)}><Icon name="plus" size={17} />Add expense</button>
